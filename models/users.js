@@ -10,7 +10,6 @@ const userSchema = mongoose.Schema({
    },
    message: 'Email invalide.'}},
   password: String,
-  token: String
 });
 
 const User = mongoose.model('users', userSchema);

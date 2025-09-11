@@ -1,14 +1,15 @@
 var express = require('express');
 var router = express.Router();
-const uid2 = require('uid2');
 
 require('../models/connection');
 const User = require('../models/users');
 const bcrypt = require('bcrypt');
+const createToken = require('../createToken');
+
 
 // sign Up
 router.post('/register', async (req, res) => {
-  if (Object.keys(User.schema.paths).slice(0,3).some(el=>!req.body[el]||!req.body[el].length)) {
+  if (Object.keys(User.schema.paths).some(el=>!req.body[el]||!req.body[el].length)) {
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
 
@@ -16,7 +17,7 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ result: false, error: 'Invalid password' })
 
   // Check if the user has not already been registered
-  const data = await User.findOne({ username: req.body.username })
+  const data = await User.findOne({ email: req.body.email })
   if (data === null) {
     try{
       const hash = bcrypt.hashSync(req.body.password, 10);
@@ -26,11 +27,14 @@ router.post('/register', async (req, res) => {
         firstname: req.body.firstname,
         email: req.body.email,
         password: hash,
-        token: uid2(32),
       });
 
       const saved = await newUser.save()
-      res.status(201).json({ result: saved });
+
+        const token = createToken(saved.email, saved._id);
+        saved.token = token;
+
+      res.status(201).json({ result: true, data: saved });
       } catch (err){
         console.log('An error appears: '+err)
         res.status(500).json({result: err});
@@ -42,19 +46,32 @@ router.post('/register', async (req, res) => {
   });
 
 // sign In
-router.post('/login', (req, res) => {
-  const {password, username}=req.body;
-  if (!password||!username) {
+router.post('/login', async (req, res) => {
+
+  //check fields
+  const {password, email}=req.body;
+
+  if (!password||!email) {
     res.json({ result: false, error: 'Missing or empty fields' });
     return;
   }
-  User.findOne({ username: req.body.username }).then(data => {
-    if (data && bcrypt.compareSync(req.body.password, data.password)) {
-      res.json({ result: true, user: data });
-    } else {
+
+  try{
+
+  // Check if the user exists in database
+  const data = await User.findOne({ email: req.body.email });
+    if (data && bcrypt.compareSync(req.body.password, data.password)){
+      const token = createToken(data._id, data.email);
+      data.token = token;
+      res.json({ result: true, data });
+      return;
+    }else{
       res.json({ result: false, error: 'User not found or wrong password' });
-    };
-  });
+    }
+    }catch(err){
+      console.log('An error appears: '+err)
+      res.status(500).json({result: false, error:'Server error'})
+  };
 });
 
 

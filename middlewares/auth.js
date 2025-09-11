@@ -1,6 +1,9 @@
+require('dotenv').config();
 const User = require('../models/users');
+const jwt = require('jsonwebtoken');
 
 async function checkToken(req, res, next) {
+  
   const auth = req.headers.authorization;
   const token = auth && auth.split(' ')[1];
 
@@ -9,7 +12,8 @@ async function checkToken(req, res, next) {
   }
 
   try {
-    const user = await User.findOne({ token });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(401).json({ error: 'no consistant user' });
     }
