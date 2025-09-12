@@ -7,10 +7,12 @@ var logger = require('morgan');
 const { checkToken } = require('./middlewares/auth');
 var indexRouter = require('./routes/index');
 var liensRouter = require('./routes/liens')
-var usersRouter = require('./routes/users');
+var authRouter = require('./routes/authRouter');
 var rubriquesRouter = require('./routes/rubriques');
-const cors = require('cors');
+require('./models/connection')
+
 var app = express();
+const cors = require('cors');
 
 
 app.use(cors());
@@ -21,7 +23,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/auth', authRouter);
 app.use('/liens', checkToken, liensRouter);
 app.use('/rubriques', checkToken, rubriquesRouter);
 

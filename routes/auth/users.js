@@ -1,10 +1,11 @@
 var express = require('express');
 var router = express.Router();
 
-require('../models/connection');
-const User = require('../models/users');
+require('../../models/connection');
+const User = require('../../models/users');
 const bcrypt = require('bcrypt');
-const createToken = require('../createToken');
+const createToken = require('../../createToken');
+
 
 
 // sign Up
@@ -62,7 +63,6 @@ router.post('/login', async (req, res) => {
   const data = await User.findOne({ email: req.body.email });
     if (data && bcrypt.compareSync(req.body.password, data.password)){
       const token = await createToken(data._id, data.email);
-      console.log(token)
       res.json({ result: true, data, token });
       return;
     }else{
