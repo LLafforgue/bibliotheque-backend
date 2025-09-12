@@ -35,13 +35,13 @@ router.post('/register', async (req, res) => {
         saved.token = token;
 
       res.status(201).json({ result: true, data: saved });
-      } catch (err){
-        console.log('An error appears: '+err)
-        res.status(500).json({result: err});
+      } catch (error){
+        console.log('An error appears: '+error)
+        res.status(500).json({result: false, error});
         }
       }else {
       // User already exists in database
-      res.status(400).json({ error: 'User already exists' });
+      res.status(400).json({ result: false, error: 'User already exists' });
     }
   });
 
@@ -61,12 +61,12 @@ router.post('/login', async (req, res) => {
   // Check if the user exists in database
   const data = await User.findOne({ email: req.body.email });
     if (data && bcrypt.compareSync(req.body.password, data.password)){
-      const token = createToken(data._id, data.email);
-      data.token = token;
-      res.json({ result: true, data });
+      const token = await createToken(data._id, data.email);
+      console.log(token)
+      res.json({ result: true, data, token });
       return;
     }else{
-      res.json({ result: false, error: 'User not found or wrong password' });
+      res.status(401).json({ result: false, error: 'User not found or wrong password' });
     }
     }catch(err){
       console.log('An error appears: '+err)
