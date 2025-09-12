@@ -31,8 +31,10 @@ router.post('/register', async (req, res) => {
       });
 
       const saved = await newUser.save()
-
-        const token = createToken(saved.email, saved._id);
+        console.log('User saved: '+saved);
+        // Create a token
+        const {email} = req.body;
+        const token = createToken({saved, email});
         saved.token = token;
 
       res.status(201).json({ result: true, data: saved });
@@ -74,5 +76,31 @@ router.post('/login', async (req, res) => {
   };
 });
 
+// reset password
+router.put('/:token', async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ result: false, error: 'Missing or empty fields' });
+  }
+  if(!(password.length>=8&&/[A-Z0-9](\*|$|#|@|\+|_)/.test(password)))
+    return res.status(400).json({ result: false, error: 'Invalid password' })
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ result: false, error: 'User not found' });
+    }
+    const hash = bcrypt.hashSync(password, 10);
+    user.password = hash;
+    await user.save();
+    res.json({ result: true, message: 'Password updated successfully' });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ result: false, error: 'Token expired' });
+    }
+    res.status(500).json({ result: false, error: 'Server error' });
+  };
+});
 
 module.exports = router;
