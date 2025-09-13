@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 const nodemailer = require('nodemailer');
-const jwt = require('jsonwebtoken');
 const User = require('../../models/users');
 const createToken = require('../../createToken');
 
@@ -38,8 +37,8 @@ router.post('/', async (req, res) => {
         return res.status(404).json({ result: false, error: 'User not found' });
     }
     // Create a password reset token
-    const token = createToken(user, 'password');
-    const resetLink = `http://localhost:3000/resetPassword?token=${token}`;
+    const token = await createToken(user, 'password');
+    const resetLink = `http://localhost:3000/nvpassword/${token}`;
     // Send email with the reset link
     
         transporter.sendMail(mailOptions(email, resetLink), (error, info) => {

@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-
+const jwt = require('jsonwebtoken')
 require('../../models/connection');
 const User = require('../../models/users');
 const bcrypt = require('bcrypt');
@@ -80,13 +80,16 @@ router.post('/login', async (req, res) => {
 router.put('/:token', async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
+
   if (!token || !password) {
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
-  if(!(password.length>=8&&/[A-Z0-9](\*|$|#|@|\+|_)/.test(password)))
+  if(!(password.length>=8&&/[A-Z0-9](&|\*|\$|#|@|\+|_)/.test(password)))
     return res.status(400).json({ result: false, error: 'Invalid password' })
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
+    console.log('ok3')
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(404).json({ result: false, error: 'User not found' });
@@ -96,7 +99,7 @@ router.put('/:token', async (req, res) => {
     await user.save();
     res.json({ result: true, message: 'Password updated successfully' });
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
+    if (error?.name === 'TokenExpiredError') {
       return res.status(401).json({ result: false, error: 'Token expired' });
     }
     res.status(500).json({ result: false, error: 'Server error' });
