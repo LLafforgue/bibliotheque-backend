@@ -5,16 +5,19 @@ require('../../models/connection');
 const User = require('../../models/users');
 const bcrypt = require('bcrypt');
 const createToken = require('../../createToken');
+const pattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[&*$#@+_]).{8,}$/;
 
 
 
 // sign Up
 router.post('/register', async (req, res) => {
-  if (Object.keys(User.schema.paths).some(el=>!req.body[el]||!req.body[el].length)) {
+  console.log(req.body)
+  console.log(Object.keys(User.schema.paths).slice(0,3))
+  if (Object.keys(User.schema.paths).slice(0,4).some(el=>!req.body[el]||!req.body[el].length)) {
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
 
-  if(!(req.body.password.length>=8&&/[A-Z0-9](\*|$|#|@|\+|_)/.test(req.body.password)))
+  if(!(pattern.test(req.body.password)))
     return res.status(400).json({ result: false, error: 'Invalid password' })
 
   // Check if the user has not already been registered
@@ -84,13 +87,13 @@ router.put('/:token', async (req, res) => {
   if (!token || !password) {
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
-  if(!(password.length>=8&&/[A-Z0-9](&|\*|\$|#|@|\+|_)/.test(password)))
+  if(!(pattern.test(password)))
     return res.status(400).json({ result: false, error: 'Invalid password' })
 
   try {
-    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
-    console.log('ok3')
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
+
     if (!user) {
       return res.status(404).json({ result: false, error: 'User not found' });
     }
