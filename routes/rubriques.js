@@ -6,7 +6,7 @@ router.post('/', addRubrique);
 
 router.get('/', getRubriques);
 
-router.put('/:id', upDateNameRubriques);
+router.put('/newname/:id', upDateNameRubriques);
 
 router.put('/', upDatePositions);
 

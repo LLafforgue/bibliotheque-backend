@@ -79,26 +79,27 @@ exports.upDateNameRubriques = async (req, res) => {
 exports.upDatePositions = async (req, res) => {
   const user = req.user._id;
   const bodyData = req.body.data;
-
+  
   if (bodyData.length > 1000) {
-    return res.status(413).json({
-      result: false,
-      error: "Trop de données envoyées. La limite est fixée à 1000 éléments."
-    });
-  }
-
-  const updates = bodyData.map(({ id, position }) => ({
-    updateOne: {
-      filter: { user: user, _id: id },
-      update: { $set: { position } }
+      return res.status(413).json({
+          result: false,
+          error: "Trop de données envoyées. La limite est fixée à 1000 éléments."
+        });
     }
-  }));
+    console.log(bodyData[0]);
+    
+    const updates = bodyData.map(({ _id, position }) => ({
+        updateOne: {
+            filter: { user: user, _id: _id },
+            update: { $set: { position } }
+        }
+    }));
+    console.log(updates[0].update);
 
   try {
-    const { acknowledged, matchedCount, modifiedCount } = await Rubrique.bulkWrite(updates);
-    console.log(acknowledged);
+    const {modifiedCount, matchedCount } = await Rubrique.bulkWrite(updates);
 
-    if (acknowledged) {
+    if (modifiedCount>0) {
       if (matchedCount === bodyData.length) {
         if (modifiedCount === bodyData.length) {
           return res.status(200).json({
