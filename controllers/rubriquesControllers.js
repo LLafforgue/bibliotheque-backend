@@ -1,68 +1,132 @@
-const Rubrique = require('../models/rubriques')
+const Rubrique = require('../models/rubriques');
 
-exports.addRubrique = async (req, res) =>{
-    console.log(req.user)
-    const {name} = req.body;
-    if(!name) return res.status(400).json({result:'field missing'});
+exports.addRubrique = async (req, res) => {
+  console.log(req.user);
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ result: false, error: "Champ 'name' manquant" });
+  }
 
-    const user = req.user;
+  const user = req.user;
 
-    const existing = await Rubrique.findOne({ name, user: user._id });
-    if (existing) {
-    return res.status(400).json({ error: `Rubrique ${name} already exist` });
-    }
-    try{
-        const rub = new Rubrique({
-        name,
-        user:user._id,
-        position: (await Rubrique.countDocuments({user:user._id}))+1,
-        liens : []
-    })
-    
+  const existing = await Rubrique.findOne({ name, user: user._id });
+  if (existing) {
+    return res.status(400).json({ result: false, error: `La rubrique '${name}' existe déjà` });
+  }
 
-    const saved = await rub.save()
-    res.status(200).json({result:saved});
-    }catch(err){
+  try {
+    const rub = new Rubrique({
+      name,
+      user: user._id,
+      position: (await Rubrique.countDocuments({ user: user._id })) + 1,
+      liens: []
+    });
+
+    const saved = await rub.save();
+    res.status(200).json({ result: true, data: saved });
+  } catch (err) {
     console.error("Erreur d'enregistrement :", err);
-    res.status(500).json({error:'Erreur serveur'})
-    }
+    res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
 };
 
-exports.getRubriques = async (req, res)=>{
-        const user = req.user;
-    if(!user) return res.status(400).json({error:'User inexistant'});   
-    try{
-        const rubriques = await Rubrique.aggregate([
-            { $match: { user: user._id } },
-            { $addFields: { number: { $size: '$liens' } } },
-            { $project: { liens: 0 } }, 
-            { $sort: { position: 1 } } 
-        ]);
-        
-        res.status(200).json({result:true, data:rubriques});
-    }catch(err){
-        console.error("Erreur de lecture :", err);
-        res.status(500).json({result:false, error:'Erreur serveur'})
-    }
+exports.getRubriques = async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(400).json({ result: false, error: "Utilisateur inexistant" });
+  }
+
+  try {
+    const rubriques = await Rubrique.aggregate([
+      { $match: { user: user._id } },
+      { $addFields: { number: { $size: '$liens' } } },
+      { $project: { liens: 0 } },
+      { $sort: { position: 1 } }
+    ]);
+
+    res.status(200).json({ result: true, data: rubriques });
+  } catch (err) {
+    console.error("Erreur de lecture :", err);
+    res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
 };
 
-exports.upDateNameRubriques = async (req, res)=>{
+exports.upDateNameRubriques = async (req, res) => {
+  const { id } = req.params;
+  console.log("ID de la rubrique à modifier :", id);
 
-    const {id} = req.params;
-    console.log("ID de la rubrique à modifier :", id);
-    const {name} = req.body;
-    if(!name) return res.status(400).json({result:'field missing'});
-    const user = req.user;
-    try{
-        const rub = await Rubrique.findOne({_id:id, user:user._id})
-        if(!rub) return res.status(400).json({error:'Rubrique inexistante'});
-        rub.name = name;
-        const saved = await rub.save();
-        res.status(200).json({result:saved});
-    }catch(err){
-        console.error("Erreur de modification :", err);
-        res.status(500).json({error:'Erreur serveur'})
+  const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ result: false, error: "Champ 'name' manquant" });
+  }
+
+  const user = req.user;
+  try {
+    const rub = await Rubrique.findOne({ _id: id, user: user._id });
+    if (!rub) {
+      return res.status(404).json({ result: false, error: "Rubrique inexistante" });
     }
+
+    rub.name = name;
+    const saved = await rub.save();
+    res.status(200).json({ result: true, data: saved });
+  } catch (err) {
+    console.error("Erreur de modification :", err);
+    res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
 };
 
+exports.upDatePositions = async (req, res) => {
+  const user = req.user._id;
+  const bodyData = req.body.data;
 
+  if (bodyData.length > 1000) {
+    return res.status(413).json({
+      result: false,
+      error: "Trop de données envoyées. La limite est fixée à 1000 éléments."
+    });
+  }
+
+  const updates = bodyData.map(({ id, position }) => ({
+    updateOne: {
+      filter: { user: user, _id: id },
+      update: { $set: { position } }
+    }
+  }));
+
+  try {
+    const { acknowledged, matchedCount, modifiedCount } = await Rubrique.bulkWrite(updates);
+    console.log(acknowledged);
+
+    if (acknowledged) {
+      if (matchedCount === bodyData.length) {
+        if (modifiedCount === bodyData.length) {
+          return res.status(200).json({
+            result: true,
+            data: "Toutes les données ont bien été modifiées"
+          });
+        } else {
+          return res.status(207).json({
+            result: false,
+            error: `${modifiedCount} données sur ${bodyData.length} modifiées`
+          });
+        }
+      } else {
+        return res.status(404).json({
+          result: false,
+          error: `${modifiedCount} données sur ${bodyData.length} non identifiées`
+        });
+      }
+    } else {
+      return res.status(500).json({
+        result: false,
+        error: "Modifications non réalisées"
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({
+      result: false,
+      error: err.message || "Erreur serveur"
+    });
+  }
+};
