@@ -22,6 +22,7 @@ const lienSchema =  mongoose.Schema({
     reader: {type: mongoose.Schema.Types.ObjectId, ref:'users'},
     video : {type:Boolean, default:false},
     favoris: {type:Boolean, default:false},
+    motsClefs:[String]
 
 })
 
