@@ -1,7 +1,6 @@
 const Rubrique = require('../models/rubriques');
 
 exports.addRubrique = async (req, res) => {
-  console.log(req.user);
   const { name } = req.body;
   if (!name) {
     return res.status(400).json({ result: false, error: "Champ 'name' manquant" });
