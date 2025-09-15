@@ -16,13 +16,12 @@ const lienSchema =  mongoose.Schema({
         } 
     }},
     description: String,
-    motsClefs: [String],
+    motsClefs: [{type: String}],
     createdAt: {type: Date, default: Date.now },
     clicNum: {type: Number, default:0},
-    reader: {type: mongoose.Schema.Types.ObjectId, ref:'users'},
+    user: {type: mongoose.Schema.Types.ObjectId, ref:'users'},
     video : {type:Boolean, default:false},
     favoris: {type:Boolean, default:false},
-    motsClefs:[String]
 
 })
 
