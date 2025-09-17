@@ -3,74 +3,12 @@ var router = express.Router();
 const Lien = require('../models/liens');
 const User = require('../models/users');
 const Rubrique = require('../models/rubriques');
-const plimit = require('p-limit')
 const {hasVideo} = require('../middlewares/hasVideo')
+const pLimit = require('p-limit').default;; 
+
+const limit = pLimit(5);
 
 
-// POST /api/liens
-// router.post('/', async (req, res) => {
-//   const {data} = req.body; 
-//   if (data.length>1000) res.status(400).json({result:false, error:'too many datas'});
-
-//   const user = req.user._id;
-//   //vérification des champs
-//   const emptyField = data.some(e => !e.href || !e.salle );
-//   if (emptyField) res.status(400).json({ error: 'Empty field' });
- 
-//   const sallesToSet = data.reduce((acc, lien) => {
-//     lien.salles.forEach((salle) => {
-//       let salleExist = acc.find((item) => item.salle === salle);
-//       if (!salleExist) {
-//         salleExist = { salle, liens: new Set() };
-//         acc.push(salleExist);
-//       }
-//       salleExist.liens.add(lien.href); 
-//     });
-//     return acc;
-//   }, []);
-
-//   // Conversion des Sets en tableaux
-//   const sallesToUpDate = sallesToSet.map((item) => ({
-//     salle: item.salle,
-//     liens: Array.from(item.liens),
-//   }));
-  
-
-   
-//   const limit = plimit(5)
-//   //sauvegarde des liens et vérifications vidéo en parallèle    
-
-//   const promessesVerification = data.map(lien =>
-//     limit(async () => {
-//       try {
-//         const video = await hasVideo(lien.href);
-//         const nouveauLien = new Lien({
-//           href: lien.href,
-//           description: lien.description,
-//           video: video,
-//           motsClefs:lien.motsClefs,
-//           user:user
-//         });
-//         return nouveauLien.save();
-//       } catch (error) {
-//         console.error(`Erreur pour ${lien.description}:`, error);
-//         return null;
-//       }
-//     })
-//   );
-//   const liensValides = (await Promise.all(promessesVerification)).filter(lien => lien !== null);
-    
-//   const operationsBulk = sallesToUpDate.map((lien) => ({
-//     updateOne: {
-//       filter: { name: lien.salle, user:user },
-//       update: { $addToSet: { liens: lien.liens } },
-//     },
-//   }));
-
-//   await Rubrique.bulkWrite(operationsBulk);
-
-//   return { message: "Liens traités avec succès", liensValides };
-//   });
 
 router.post('/', async (req, res) => {
   const { data } = req.body;
@@ -83,11 +21,12 @@ router.post('/', async (req, res) => {
   if (emptyField) return res.status(400).json({ error: "Empty field" });
 
   // Vérification des vidéos et sauvegarde des liens
-  const limit = plimit(5);
+  
   const promessesVerification = data.map(lien =>
     limit(async () => {
       try {
         const video = await hasVideo(lien.href);
+        console.log('le retour de hasVideo', video)
         const nouveauLien = new Lien({
           href: lien.href,
           description: lien.description,
@@ -95,6 +34,7 @@ router.post('/', async (req, res) => {
           motsClefs: lien.motsClefs,
           user,
         });
+        console.log('le lien est ', nouveauLien)
         return await nouveauLien.save(); // Retourne le document sauvegardé (avec _id)
       } catch (error) {
         console.error(`Erreur pour ${lien.description || lien.href}:`, error.message);
@@ -130,9 +70,12 @@ router.post('/', async (req, res) => {
     await Rubrique.bulkWrite(operationsBulk);
 
     res.status(200).json({
-      message: "Liens traités avec succès",
+      result:true,
+      data:{
       liensValides: liensValides.length,
       sallesMisesAJour: Object.keys(liensParSalle).length,
+      },
+      message: "Liens traités avec succès",
     });
   } catch (error) {
     console.error("Erreur serveur:", error);
@@ -142,7 +85,7 @@ router.post('/', async (req, res) => {
   
 
 //Récupérer l'ensemble des liens d'un user
-router.get('/:token', checkToken, async (req, res)=>{
+router.get('/', async (req, res)=>{
   
   try {
 

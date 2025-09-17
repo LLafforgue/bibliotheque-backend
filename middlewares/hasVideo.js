@@ -1,8 +1,8 @@
- // Recherche de vidéo : <video>, iframe YouTube, Vimeo, etc.
 const fetch = require('node-fetch');
 const { JSDOM } = require('jsdom');
+// Recherche de vidéo : <video>, iframe YouTube, Vimeo, etc.
 
- export default async function hasVideo (href){
+ async function hasVideo (href){
         try {
         const response = await fetch(href, { timeout: 5000 });
         if (!response.ok) {
@@ -12,11 +12,16 @@ const { JSDOM } = require('jsdom');
         const html = await response.text();
         const dom = new JSDOM(html);
         const document = dom.window.document;
-        title = document.title;
-        return  document.querySelector('video') ||
+        console.log(document)
+        const video =  document.querySelector('video') ||
                 document.querySelector('iframe[src*="youtube"]') ||
                 document.querySelector('iframe[src*="vimeo"]');
+        if (video) return true
+
       } catch {
         return false;
       }
+      return false
     }
+
+module.exports = {hasVideo}
