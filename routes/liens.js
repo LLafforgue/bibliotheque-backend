@@ -15,10 +15,10 @@ router.post('/', async (req, res) => {
   const user = req.user._id;
 
   // Validations
-  if (data.length > 1000) return res.status(400).json({ error: "Too many items (max 1000)" });
+  if (data.length > 1000) return res.status(400).json({result: false, error: "Too many items (max 1000)" });
 
   const emptyField = data.some(e => !e.href || !e.salles);
-  if (emptyField) return res.status(400).json({ error: "Empty field" });
+  if (emptyField) return res.status(400).json({result: false, error: "Empty field" });
 
   // Vérification des vidéos et sauvegarde des liens
   
@@ -42,10 +42,14 @@ router.post('/', async (req, res) => {
       }
     })
   );
+    console.log('ok :', promessesVerification)
 
   try {
-    const liensValides = (await Promise.all(promessesVerification))
-      .filter(lien => lien !== null);
+    const results = await Promise.allSettled(promessesVerification);
+    const liensValides = results
+      .filter(r => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value);
+    console.log('Liens valides:', liensValides.length);
 
     // Regroupe les _id des liens par salle
     const liensParSalle = {};
@@ -66,7 +70,6 @@ router.post('/', async (req, res) => {
         update: { $addToSet: { liens: { $each: lienIds } } },
       },
     }));
-
     await Rubrique.bulkWrite(operationsBulk);
 
     res.status(200).json({
@@ -79,7 +82,7 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur serveur:", error);
-    res.status(500).json({ error: "Erreur serveur" });
+    res.status(500).json({ result: false, error: "Erreur serveur" });
   }
 });
   
