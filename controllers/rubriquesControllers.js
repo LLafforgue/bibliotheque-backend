@@ -38,8 +38,13 @@ exports.getRubriques = async (req, res) => {
   try {
     const rubriques = await Rubrique.aggregate([
       { $match: { user: user._id } },
+      {$lookup: {
+      from: "liens", // Nom de la collection à joindre
+      localField: "liens", // Champ dans la collection courante (ex: "authorId")
+      foreignField: "_id", // Champ dans l'autre collection (ex: "_id" de l'auteur)
+      as: "liens" // Nom du champ qui contiendra les résultats joints
+      }},
       { $addFields: { number: { $size: '$liens' } } },
-      { $project: { liens: 0 } },
       { $sort: { position: 1 } }
     ]);
 
