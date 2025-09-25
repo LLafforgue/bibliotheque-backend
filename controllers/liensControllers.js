@@ -1,8 +1,8 @@
 const Lien = require('../models/liens');
 const Rubrique = require('../models/rubriques');
-const {hasVideo} = require('../middlewares/hasVideo')
-const pLimit = require('p-limit').default;
-const limit = pLimit(5);
+// const {hasVideo} = require('../middlewares/hasVideo')
+// const pLimit = require('p-limit').default;
+// const limit = pLimit(5);
 const { JSDOM } = require('jsdom');
 
 
@@ -26,98 +26,98 @@ async function getFaviconUrl(url) {
 }
 
 exports.ajoutLiens = async (req, res) => {
-const { data } = req.body;
-  const user = req.user._id; // fourni par ton middleware d'auth
+// const { data } = req.body;
+//   const user = req.user._id; // fourni par ton middleware d'auth
 
-  try {
-    // Vérification des vidéos et sauvegarde des liens
-    const promesses = data.map((lien) =>
-      limit(async () => {
-        try {
-          const video = await hasVideo(lien.href);
+//   try {
+//     // Vérification des vidéos et sauvegarde des liens
+//     const promesses = data.map((lien) =>
+//       limit(async () => {
+//         try {
+//           const video = await hasVideo(lien.href);
 
-          const favicon = await getFaviconUrl(lien.href);
+//           const favicon = await getFaviconUrl(lien.href);
           
-          const nouveauLien = new Lien({
-            href: lien.href,
-            description: lien.description || "",
-            video,
-            motsClefs: lien.motsClefs || [],
-            user,
-            favicon
-          });
+//           const nouveauLien = new Lien({
+//             href: lien.href,
+//             description: lien.description || "",
+//             video,
+//             motsClefs: lien.motsClefs || [],
+//             user,
+//             favicon
+//           });
 
           
 
-          return await nouveauLien.save();
-        } catch (error) {
-          console.error(`Erreur lors du traitement de ${lien.href}:`, error.message);
-          return { error: true, href: lien.href, message: error.message };
-        }
-      })
-    );
+//           return await nouveauLien.save();
+//         } catch (error) {
+//           console.error(`Erreur lors du traitement de ${lien.href}:`, error.message);
+//           return { error: true, href: lien.href, message: error.message };
+//         }
+//       })
+//     );
 
-    const results = await Promise.allSettled(promesses);
+//     const results = await Promise.allSettled(promesses);
 
-    // Séparation succès / erreurs
-    const liensSauvegardes = [];
-    const erreurs = [];
+//     // Séparation succès / erreurs
+//     const liensSauvegardes = [];
+//     const erreurs = [];
 
-    results.forEach((r) => {
-      if (r.status === "fulfilled") {
-        if (r.value && !r.value.error) {
-          liensSauvegardes.push(r.value);
-        } else if (r.value?.error) {
-          erreurs.push(r.value);
-        }
-      } else {
-        erreurs.push({ error: true, message: r.reason?.message || "Unknown error" });
-      }
-    });
+//     results.forEach((r) => {
+//       if (r.status === "fulfilled") {
+//         if (r.value && !r.value.error) {
+//           liensSauvegardes.push(r.value);
+//         } else if (r.value?.error) {
+//           erreurs.push(r.value);
+//         }
+//       } else {
+//         erreurs.push({ error: true, message: r.reason?.message || "Unknown error" });
+//       }
+//     });
 
-    // Indexation rapide par href
-    const mapLiens = new Map(liensSauvegardes.map((l) => [l.href, l]));
+//     // Indexation rapide par href
+//     const mapLiens = new Map(liensSauvegardes.map((l) => [l.href, l]));
 
-    // Regroupe les _id des liens par salle
-    const liensParSalle = {};
-    data.forEach((lien) => {
-      lien.salles.forEach((salle) => {
-        const lienSauvegarde = mapLiens.get(lien.href);
-        if (lienSauvegarde) {
-          if (!liensParSalle[salle]) liensParSalle[salle] = [];
-          liensParSalle[salle].push(lienSauvegarde._id);
-        }
-      });
-    });
+//     // Regroupe les _id des liens par salle
+//     const liensParSalle = {};
+//     data.forEach((lien) => {
+//       lien.salles.forEach((salle) => {
+//         const lienSauvegarde = mapLiens.get(lien.href);
+//         if (lienSauvegarde) {
+//           if (!liensParSalle[salle]) liensParSalle[salle] = [];
+//           liensParSalle[salle].push(lienSauvegarde._id);
+//         }
+//       });
+//     });
 
-    // Mise à jour des rubriques
-    const operationsBulk = Object.entries(liensParSalle).map(([salle, lienIds]) => ({
-      updateOne: {
-        filter: { name: salle, user },
-        update: { $addToSet: { liens: { $each: lienIds } } },
-        upsert: true, // au besoin : crée la rubrique si elle n'existe pas
-      },
-    }));
+//     // Mise à jour des rubriques
+//     const operationsBulk = Object.entries(liensParSalle).map(([salle, lienIds]) => ({
+//       updateOne: {
+//         filter: { name: salle, user },
+//         update: { $addToSet: { liens: { $each: lienIds } } },
+//         upsert: true, // au besoin : crée la rubrique si elle n'existe pas
+//       },
+//     }));
 
-    if (operationsBulk.length > 0) {
-      await Rubrique.bulkWrite(operationsBulk);
-    }
+//     if (operationsBulk.length > 0) {
+//       await Rubrique.bulkWrite(operationsBulk);
+//     }
 
-    // Réponse
-    res.status(200).json({
-      result: true,
-      data: {
-        liensSauvegardes: liensSauvegardes.length,
-        erreurs: erreurs.length,
-        sallesMisesAJour: Object.keys(liensParSalle).length,
-      },
-      erreurs, // facultatif, à retirer si tu veux garder la réponse plus "light"
-      message: "Liens traités avec succès",
-    });
-  } catch (error) {
-    console.error("Erreur serveur:", error);
-    res.status(500).json({ result: false, error: "Erreur serveur" });
-  }
+//     // Réponse
+//     res.status(200).json({
+//       result: true,
+//       data: {
+//         liensSauvegardes: liensSauvegardes.length,
+//         erreurs: erreurs.length,
+//         sallesMisesAJour: Object.keys(liensParSalle).length,
+//       },
+//       erreurs, // facultatif, à retirer si tu veux garder la réponse plus "light"
+//       message: "Liens traités avec succès",
+//     });
+//   } catch (error) {
+//     console.error("Erreur serveur:", error);
+//     res.status(500).json({ result: false, error: "Erreur serveur" });
+//   }
 };
 
 exports.favoris = async (req, res) => {
