@@ -1,6 +1,7 @@
 {
   "name": "bibliotheque_backend",
   "version": "0.0.0",
+  "type": "commonjs",
   "private": true,
   "scripts": {
     "start": "node --watch ./bin/www"
