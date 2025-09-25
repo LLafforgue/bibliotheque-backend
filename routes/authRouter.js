@@ -10,5 +10,9 @@ router.get('/', checkToken,(req,res)=>{
     res.json({result:true, ...req.user})
 })
 
+router.get('/test',async (req,res)=>{
+    res.json({test:true})
+})
+
 
 module.exports = router;
