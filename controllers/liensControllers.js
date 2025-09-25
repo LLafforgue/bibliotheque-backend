@@ -131,9 +131,21 @@ exports.favoris = async (req, res) => {
     console.error("Erreur serveur:", err);
     res.status(500).json({
       result: false,
-      error: err.message.includes("Cast to ObjectId failed")
+      error: err?.message?.includes("Cast to ObjectId failed")
         ? "ID de lien invalide"
         : "Erreur serveur"
     });
+  }
+}
+
+exports.allFavoris = async (res,req) => {
+  const user = req.user._id;
+
+  try{
+    const fav = await Lien.find({user, favoris:true})
+    if(fav.length) return res.json({result:true, data:fav})
+    res.status(400).json({result: false, error:'Pas de favoris'});
+  } catch (err) {
+    res.status(500).json({result:false, error:err?.message})
   }
 }
