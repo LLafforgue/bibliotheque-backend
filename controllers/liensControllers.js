@@ -3,6 +3,27 @@ const Rubrique = require('../models/rubriques');
 const {hasVideo} = require('../middlewares/hasVideo')
 const pLimit = require('p-limit').default;
 const limit = pLimit(5);
+const { JSDOM } = require('jsdom');
+
+
+async function getFaviconUrl(url) {
+  try {
+    const dom = await JSDOM.fromURL(url);
+    const document = dom.window.document;
+    let faviconUrl = document.querySelector("link[rel*='icon']")?.href;
+    if (!faviconUrl) {
+      // Si aucun favicon n'est trouvé, utiliser l'URL par défaut
+      faviconUrl = new URL("/favicon.ico", url).href;
+    } else if (!faviconUrl.startsWith("http")) {
+      // Si l'URL est relative, la rendre absolue
+      faviconUrl = new URL(faviconUrl, url).href;
+    }
+    return faviconUrl;
+  } catch (error) {
+    console.error("Erreur lors de la récupération du favicon :", error);
+    return null;
+  }
+}
 
 exports.ajoutLiens = async (req, res) => {
 const { data } = req.body;
@@ -15,13 +36,18 @@ const { data } = req.body;
         try {
           const video = await hasVideo(lien.href);
 
+          const favicon = await getFaviconUrl(lien.href);
+          
           const nouveauLien = new Lien({
             href: lien.href,
             description: lien.description || "",
             video,
             motsClefs: lien.motsClefs || [],
             user,
+            favicon
           });
+
+          
 
           return await nouveauLien.save();
         } catch (error) {
@@ -138,8 +164,8 @@ exports.favoris = async (req, res) => {
   }
 }
 
-exports.allFavoris = async (res,req) => {
-  const user = req.user._id;
+exports.allFavoris = async (req,res) => {
+  const user = req.user?._id;
 
   try{
     const fav = await Lien.find({user, favoris:true})

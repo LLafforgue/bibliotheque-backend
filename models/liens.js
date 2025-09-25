@@ -27,6 +27,7 @@ const lienSchema =  mongoose.Schema({
     user: {type: mongoose.Schema.Types.ObjectId, ref:'users'},
     video : {type:Boolean, default:false},
     favoris: {type:Boolean, default:false},
+    favicon:String
 
 })
 
